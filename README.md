@@ -5,9 +5,7 @@
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Releases](https://img.shields.io/github/v/release/DrowBlack/Void-Scraper?display_name=release&labelColor=gray&color=lightgray)](https://github.com/DrowBlack/Void-Scraper/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/DrowBlack/Void-Scraper/total?style=flat&color=brightgreen)](https://github.com/DrowBlack/Void-Scraper/releases)
-[![Stars](https://img.shields.io/github/stars/DrowBlack/Void-Scraper?style=flat&color=yellow)](https://github.com/DrowBlack/Void-Scraper/stargazers)
 [![Code Size](https://img.shields.io/github/languages/code-size/DrowBlack/Void-Scraper?style=flat&color=blue)](https://github.com/DrowBlack/Void-Scraper)
-[![Issues](https://img.shields.io/github/issues/DrowBlack/Void-Scraper?style=flat&color=red)](https://github.com/DrowBlack/Void-Scraper/issues)
 [![Forks](https://img.shields.io/github/forks/DrowBlack/Void-Scraper?style=flat&color=purple)](https://github.com/DrowBlack/Void-Scraper/network/members)
 
 A high-performance, automated network utility designed to scrape, validate, and analyze public proxies.
