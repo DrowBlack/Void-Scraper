@@ -11,20 +11,16 @@ from rich.text import Text
 from rich.prompt import Prompt
 from rich import box
 
-# --- AYARLAR ---
-THREAD_SAYISI = 100
+MAX_THREADS = 100
 TIMEOUT = 5
 
 console = Console()
 
-# Tarayıcı Kimliği (User-Agent)
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 }
 
-# --- KATEGORİLERE AYRILMIŞ KAYNAKLAR ---
-# Buraya istediğin siteyi ekleyebilirsin. Script sitenin HTML'ini okuyup IP:PORT formatına uyan her şeyi çeker.
-KAYNAKLAR = {
+SOURCES = {
     "http": [
         "https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all",
         "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt",
@@ -45,18 +41,18 @@ KAYNAKLAR = {
         "https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/socks5.txt",
         "https://raw.githubusercontent.com/hookzof/socks5_list/master/proxy.txt",
         "https://www.freeproxy.world/?type=socks5&anonymity=&country=&speed=&port=&page=1",
-        "https://spys.one/en/socks-proxy-list/"
+        "https://spys.one/en/socks-proxy-list/",
         "https://www.freeproxy.world/?type=socks5"
     ]
 }
 
-def ekrani_temizle():
+def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
-def banner_yazdir():
-    ekrani_temizle()
+def print_banner():
+    clear_screen()
     banner = """
-    ██╗   ██╗ ██████╗ ██╗██████╗         
+   ██╗   ██╗ ██████╗ ██╗██████╗         
     ██║   ██║██╔═══██╗██║██╔══██╗        
     ██║   ██║██║   ██║██║██║  ██║        
     ╚██╗ ██╔╝██║   ██║██║██║  ██║        
@@ -69,37 +65,34 @@ def banner_yazdir():
                         subtitle="[italic]Protocol Selection Enabled[/italic]",
                         border_style="green"))
 
-def protokol_secimi():
-    console.print("\n[bold white]Hangi tür proxy avlayalım?[/bold white]")
+def select_protocol():
+    console.print("\n[bold white]Select Proxy Type[/bold white]")
     console.print("[1] [cyan]HTTP / HTTPS[/cyan]")
     console.print("[2] [cyan]SOCKS4[/cyan]")
-    console.print("[3] [magenta]SOCKS5[/magenta] (Minecraft/Zenith için önerilen)\n")
+    console.print("[3] [magenta]SOCKS5[/magenta] (Recommended)\n")
     
-    secim = Prompt.ask("[bold yellow]Seçiminiz[/bold yellow]", choices=["1", "2", "3"], default="3")
+    choice = Prompt.ask("[bold yellow]Choice[/bold yellow]", choices=["1", "2", "3"], default="3")
     
-    if secim == "1": return "http"
-    if secim == "2": return "socks4"
-    if secim == "3": return "socks5"
+    if choice == "1": return "http"
+    if choice == "2": return "socks4"
+    if choice == "3": return "socks5"
     return "socks5"
 
-def evrensel_tarayici(url):
-    """HTML yapısına bakmadan Regex ile IP:PORT çeker"""
-    bulunanlar = set()
+def scrape_proxies(url):
+    found_proxies = set()
     try:
         r = requests.get(url, headers=HEADERS, timeout=10)
-        # Regex: Sayı.Sayı.Sayı.Sayı:Port yapısını bul
-        regex_deseni = r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d{2,5}"
-        eslesmeler = re.findall(regex_deseni, r.text)
-        for proxy in eslesmeler:
-            bulunanlar.add(proxy)
+        regex_pattern = r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d{2,5}"
+        matches = re.findall(regex_pattern, r.text)
+        for proxy in matches:
+            found_proxies.add(proxy)
     except:
         pass
-    return bulunanlar
+    return found_proxies
 
-def proxy_kontrol_et(args):
-    proxy, protokol = args
-    # Protokole göre bağlantı şeması
-    scheme = "http" if protokol == "http" else protokol
+def check_proxy(args):
+    proxy, protocol = args
+    scheme = "http" if protocol == "http" else protocol
     
     proxies_dict = {
         "http": f"{scheme}://{proxy}",
@@ -114,48 +107,44 @@ def proxy_kontrol_et(args):
         if r.status_code == 200:
             ping = int((time.time() - start_time) * 1000)
             data = r.json()
-            ulke = data.get("countryCode", "UNK")
-            return {"proxy": proxy, "ping": ping, "ulke": ulke}
+            country = data.get("countryCode", "UNK")
+            return {"proxy": proxy, "ping": ping, "country": country}
     except:
         return None
 
 def main():
-    banner_yazdir()
-    secilen_protokol = protokol_secimi()
-    dosya_adi = f"working_{secilen_protokol}.txt"
+    print_banner()
+    selected_protocol = select_protocol()
+    filename = f"working_{selected_protocol}.txt"
     
-    # İlgili kaynakları seç
-    hedef_siteler = KAYNAKLAR[secilen_protokol]
+    target_sites = SOURCES[selected_protocol]
     
-    console.print(f"\n[bold green]➜[/bold green] [bold white]{secilen_protokol.upper()}[/bold white] kaynakları taranıyor... ({len(hedef_siteler)} site)\n")
+    console.print(f"\n[bold green]➜[/bold green] Scraping [bold white]{selected_protocol.upper()}[/bold white] sources... ({len(target_sites)} sites)\n")
 
-    tum_proxyler = set()
+    all_proxies = set()
     
-    # 1. Regex Tarama
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
         BarColumn(style="green", complete_style="magenta"),
         TextColumn("({task.completed}/{task.total})"),
     ) as progress:
-        task = progress.add_task("[cyan]Kaynaklar Sömürülüyor...", total=len(hedef_siteler))
+        task = progress.add_task("[cyan]Harvesting Sources...", total=len(target_sites))
         
-        for url in hedef_siteler:
-            site_proxyleri = evrensel_tarayici(url)
-            tum_proxyler.update(site_proxyleri)
+        for url in target_sites:
+            site_proxies = scrape_proxies(url)
+            all_proxies.update(site_proxies)
             progress.advance(task)
     
-    console.print(f"\n[green]✔[/green] Toplam [bold white]{len(tum_proxyler)}[/bold white] adet {secilen_protokol} adayı bulundu.\n")
+    console.print(f"\n[green]✔[/green] Total [bold white]{len(all_proxies)}[/bold white] candidates found for {selected_protocol}.\n")
 
-    # 2. Kontrol (Checker)
-    table = Table(title=f"[bold magenta]Çalışan {secilen_protokol.upper()} Listesi[/bold magenta]", box=box.HEAVY_EDGE)
-    table.add_column("Proxy Adresi", style="cyan")
-    table.add_column("Ülke", style="green")
+    table = Table(title=f"[bold magenta]Working {selected_protocol.upper()} List[/bold magenta]", box=box.HEAVY_EDGE)
+    table.add_column("Proxy Address", style="cyan")
+    table.add_column("Country", style="green")
     table.add_column("Ping", style="yellow")
     
-    # Dosyayı sıfırla
-    with open(dosya_adi, "w") as f: f.write("")
-    calisanlar = []
+    with open(filename, "w") as f: f.write("")
+    working_proxies = []
 
     with Progress(
         SpinnerColumn(),
@@ -164,29 +153,28 @@ def main():
         TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
     ) as progress:
         
-        task = progress.add_task(f"[cyan]Void {secilen_protokol.upper()} Test Ediliyor...", total=len(tum_proxyler))
+        task = progress.add_task(f"[cyan]Testing Void {selected_protocol.upper()}...", total=len(all_proxies))
         
-        with concurrent.futures.ThreadPoolExecutor(max_workers=THREAD_SAYISI) as executor:
-            # Argümanları paketle
-            args_list = [(p, secilen_protokol) for p in tum_proxyler]
-            future_to_proxy = {executor.submit(proxy_kontrol_et, arg): arg for arg in args_list}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
+            args_list = [(p, selected_protocol) for p in all_proxies]
+            future_to_proxy = {executor.submit(check_proxy, arg): arg for arg in args_list}
             
             for future in concurrent.futures.as_completed(future_to_proxy):
                 result = future.result()
                 if result:
-                    calisanlar.append(result['proxy'])
-                    if len(calisanlar) <= 20:
-                        table.add_row(result['proxy'], result['ulke'], f"{result['ping']}ms")
+                    working_proxies.append(result['proxy'])
+                    if len(working_proxies) <= 20:
+                        table.add_row(result['proxy'], result['country'], f"{result['ping']}ms")
                     
-                    with open(dosya_adi, "a") as f:
+                    with open(filename, "a") as f:
                         f.write(result['proxy'] + "\n")
                 
                 progress.advance(task)
 
     console.print("\n")
-    if calisanlar:
+    if working_proxies:
         console.print(table)
-    console.print(Panel(f"Toplam Çalışan: [bold green]{len(calisanlar)}[/bold green]\nKayıt Yeri: [bold yellow]{dosya_adi}[/bold yellow]", border_style="green"))
+    console.print(Panel(f"Total Working: [bold green]{len(working_proxies)}[/bold green]\nSaved to: [bold yellow]{filename}[/bold yellow]", border_style="green"))
 
 if __name__ == "__main__":
     main()
