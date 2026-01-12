@@ -3,8 +3,7 @@
 
 ![Python Version](https://img.shields.io/badge/python-3.9%2B-blue)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Releases](https://img.shields.io/github/v/release/DrowBlack/Void-Scraper?display_name=release&labelColor=gray&color=lightgray)](https://github.com/DrowBlack/Void-Scraper/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/DrowBlack/Void-Scraper/total?style=flat&color=brightgreen)](https://github.com/DrowBlack/Void-Scraper/releases)
+[![Releases](https://img.shields.io/github/v/release/DrowBlack/Void-Scraper?display_name=release&labelColor=gray&color=green)](https://github.com/DrowBlack/Void-Scraper/releases/latest)
 [![Code Size](https://img.shields.io/github/languages/code-size/DrowBlack/Void-Scraper?style=flat&color=blue)](https://github.com/DrowBlack/Void-Scraper)
 [![Forks](https://img.shields.io/github/forks/DrowBlack/Void-Scraper?style=flat&color=purple)](https://github.com/DrowBlack/Void-Scraper/network/members)
 
